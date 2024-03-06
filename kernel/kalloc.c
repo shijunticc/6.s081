@@ -34,7 +34,7 @@ void
 freerange(void *pa_start, void *pa_end)
 {
   char *p;
-  p = (char*)PGROUNDUP((uint64)pa_start);
+  p = (char*)PGROUNDUP((uint64)pa_start);   // 向上取整到接近页面大小倍数
   for(; p + PGSIZE <= (char*)pa_end; p += PGSIZE)
     kfree(p);
 }
@@ -80,3 +80,21 @@ kalloc(void)
     memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;
 }
+
+
+void
+freebytes(uint64 *dst)
+{
+  *dst = 0;
+  struct run *p = kmem.freelist; // 用于遍历
+
+  acquire(&kmem.lock);
+  while (p) {
+    *dst += PGSIZE;
+    p = p->next;
+  }
+  release(&kmem.lock);
+}
+
+
+
