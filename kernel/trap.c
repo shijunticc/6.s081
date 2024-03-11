@@ -77,9 +77,26 @@ usertrap(void)
     exit(-1);
 
   // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
+  if(which_dev == 2) {
+    if(p->interval) {
+      if(p->ticks == p->interval) {
+       /*sigalarm系统调用已经返回了，系统处于内核态，由于which_dev == 2，
+       表明存在计时器中断，p->trapframe->epc修改为p->handler，之后在
+       用户态执行p->handler函数，p->handler函数执行结束后调用sys_sigreturn
+       返回到调用handler之前的状态，但此时sys_sigreturn系统调用前trapframe
+       保存的是p->handler执行后的状态，而不是p->handler执行前的状态，因此
+       需要一个新的trapframe存储p->handler执行前的寄存器状态。
+       在保存hanler调用前的trampframe，在sigalarm调用结束之前*/
+        *p->pretrapframe = *p->trapframe;  // 存储p->handler执行前的寄存器状态
+        p->trapframe->epc = p->handler;
+      }
+      p->ticks++;
+    }
     yield();
+  }
+    
 
+  
   usertrapret();
 }
 
